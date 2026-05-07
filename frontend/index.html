@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TfL Public Transport Insight System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sage:#7a9e7e;--sage-light:#b8d4bb;--sage-pale:#edf4ee;
+  --sage-dark:#3d6641;--sage-mid:#9ab89e;--charcoal:#2d3a2e;
+  --muted:#6b7d6c;--border:rgba(122,158,126,0.2);
+  --bg:#fff;--bg2:#f5f7f4;--bg3:#edf4ee;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;color:var(--charcoal);background:var(--bg2);font-size:14px;line-height:1.5}
+.shell{max-width:1100px;margin:0 auto;padding:1.5rem 1.25rem 3rem}
+.hero{background:linear-gradient(135deg,#3d6641 0%,#5f8c65 45%,#9ab89e 100%);border-radius:20px;padding:2rem 2.25rem;margin-bottom:1.5rem;color:#fff;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.06);pointer-events:none}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem}
+.hero h1{font-family:'DM Serif Display',serif;font-size:26px;font-weight:400;line-height:1.2;letter-spacing:-0.3px}
+.hero p{font-size:12px;opacity:0.75;margin-top:4px}
+.db-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);backdrop-filter:blur(4px);padding:6px 14px;border-radius:20px;font-size:11px;white-space:nowrap;flex-shrink:0}
+.dot{width:7px;height:7px;border-radius:50%;background:#ffe07a}
+.dot.ok{background:#a8ffb0}.dot.err{background:#ff8a80}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hstat{background:rgba(255,255,255,0.13);border-radius:14px;padding:0.75rem 1rem}
+.hstat .val{font-size:22px;font-weight:500;letter-spacing:-0.5px}
+.hstat .lbl{font-size:10px;opacity:0.72;margin-top:2px}
+.nav{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap}
+.nav-btn{padding:7px 18px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;background:var(--bg);color:var(--muted);transition:all 0.15s}
+.nav-btn.active{background:var(--sage);color:#fff;border-color:var(--sage)}
+.nav-btn:hover:not(.active){border-color:var(--sage);color:var(--sage-dark)}
+.panel{display:none}.panel.active{display:block}
+.sec{font-size:10px;font-weight:500;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);margin-bottom:0.65rem;padding-left:2px}
+.card{background:var(--bg);border-radius:16px;border:1px solid var(--border);padding:1.2rem 1.4rem;margin-bottom:1rem;overflow:hidden}
+.card h3{font-size:13px;font-weight:500}
+.card .sub{font-size:11px;color:var(--muted);margin-top:2px;margin-bottom:1rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:680px){.g2{grid-template-columns:1fr}.hero-stats{grid-template-columns:repeat(2,1fr)}}
+.filter-row{display:flex;gap:6px;margin-bottom:0.9rem;flex-wrap:wrap}
+.fchip{padding:4px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;cursor:pointer;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all 0.15s}
+.fchip.on{background:var(--sage);color:#fff;border-color:var(--sage)}
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;font-size:11px;border-collapse:collapse;min-width:460px}
+.tbl th{text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+.tbl td{padding:6px 10px;border-bottom:0.5px solid var(--border)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--sage-pale)}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500}
+.pr{background:#fdeaea;color:#8a2a2a}.pa{background:#fff4e0;color:#8a5e00}.pg{background:#e8f2e9;color:#2a6b30}
+.badges{display:flex;gap:7px;flex-wrap:wrap;margin-top:0.85rem}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:10px;font-size:11px}
+.bw{background:#fff4e0;color:#7a5200}.bo{background:#e8f2e9;color:#1e5a24}.bi{background:#e8eef8;color:#1a3d8a}
+.rbar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+.rbar .name{width:82px;color:var(--muted);flex-shrink:0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar .track{flex:1;height:10px;background:var(--bg3);border-radius:5px;overflow:hidden}
+.rbar .fill{height:100%;border-radius:5px;transition:width 0.5s cubic-bezier(.4,0,.2,1)}
+.rbar .dval{width:40px;text-align:right;font-weight:500;font-size:11px}
+.rbar .cztag{font-size:9px;color:var(--sage-dark);background:var(--sage-pale);padding:2px 6px;border-radius:8px;flex-shrink:0}
+.sql-card{background:var(--bg);border-radius:16px;border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
+.sql-header{padding:1rem 1.3rem;border-bottom:1px solid var(--border)}
+.sql-header h3{font-size:13px;font-weight:500}
+.sql-header .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sql-body{padding:1rem 1.3rem}
+.code-block{background:var(--sage-pale);border-radius:10px;padding:0.9rem 1.1rem;font-size:11px;line-height:1.8;color:#2d4a2e;margin-bottom:0.85rem;border-left:3px solid var(--sage);font-family:'Courier New',monospace;overflow-x:auto;white-space:pre}
+.kw{color:#3d6641;font-weight:600}.fn{color:#5a3d8a}.cm{color:#8aaa8b;font-style:italic}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:0.5rem}
+.wcard{background:var(--bg3);border-radius:12px;padding:0.75rem;text-align:center}
+.wcard .wval{font-size:20px;font-weight:500;color:var(--sage-dark);margin:2px 0}
+.wcard .wlbl{font-size:10px;color:var(--muted)}
+.wcard .wico{font-size:18px;margin-bottom:2px}
+.not-connected{background:#fff8e0;border:1px solid #f0d070;border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:none}
+.not-connected h4{font-size:13px;font-weight:500;color:#7a5200;margin-bottom:4px}
+.not-connected p{font-size:12px;color:#8a6200;line-height:1.6}
+.not-connected code{background:#fef0c0;padding:2px 6px;border-radius:5px;font-size:11px}
+
+/* key takeaways */
+.takeaways-card{background:var(--bg);border-radius:16px;border:1px solid var(--border);padding:1.2rem 1.4rem;margin-bottom:1rem}
+.takeaways-card h3{font-size:13px;font-weight:500;margin-bottom:0.85rem}
+.takeaway-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:680px){.takeaway-grid{grid-template-columns:1fr}}
+.taway{background:var(--bg3);border-radius:12px;padding:0.9rem 1rem;border-left:3px solid var(--sage-dark)}
+.taway .taway-icon{font-size:18px;margin-bottom:5px}
+.taway .taway-title{font-size:11px;font-weight:500;color:var(--sage-dark);margin-bottom:4px}
+.taway .taway-val{font-size:20px;font-weight:500;color:var(--charcoal);letter-spacing:-0.5px;line-height:1.2}
+.taway .taway-desc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+/* borough search */
+.search-card{background:var(--bg);border-radius:16px;border:1px solid var(--border);padding:1.2rem 1.4rem;margin-bottom:1.25rem}
+.search-card h3{font-size:13px;font-weight:500;margin-bottom:0.75rem}
+.search-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.borough-input{flex:1;min-width:200px;padding:8px 14px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--charcoal);background:var(--bg2);outline:none;transition:border-color 0.15s}
+.borough-input:focus{border-color:var(--sage)}
+.search-btn{padding:8px 18px;border-radius:20px;background:var(--sage-dark);color:#fff;border:none;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity 0.15s;white-space:nowrap}
+.search-btn:hover{opacity:0.85}
+.borough-suggestions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.bsug{padding:3px 10px;border-radius:12px;font-size:10px;cursor:pointer;background:var(--sage-pale);color:var(--sage-dark);border:1px solid var(--border);transition:all 0.12s}
+.bsug:hover{background:var(--sage);color:#fff;border-color:var(--sage)}
+.search-results{margin-top:1rem;display:none}
+.search-results.visible{display:block}
+.search-results .sr-title{font-size:16px;font-weight:500;margin-bottom:4px}
+.search-results .sr-sub{font-size:11px;color:var(--muted);margin-bottom:1rem}
+.sr-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.sr-stat{background:var(--bg3);border-radius:10px;padding:0.65rem 0.85rem}
+.sr-stat .v{font-size:18px;font-weight:500;color:var(--sage-dark)}
+.sr-stat .l{font-size:10px;color:var(--muted);margin-top:1px}
+.no-results{font-size:12px;color:var(--muted);padding:0.75rem 0;font-style:italic}
+
+.foot{text-align:center;font-size:10px;color:var(--muted);padding-top:1.5rem;letter-spacing:0.3px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <h1>Public Transport Insight System</h1>
+        <p>London Bus Network Performance · Transport for London · Prototype</p>
+      </div>
+      <div class="db-pill">
+        <div class="dot" id="db-dot"></div>
+        <span id="db-txt">Connecting…</span>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="val" id="hs-routes">—</div><div class="lbl">Routes monitored</div></div>
+      <div class="hstat"><div class="val" id="hs-trips">—</div><div class="lbl">Trips analysed</div></div>
+      <div class="hstat"><div class="val" id="hs-delay">—</div><div class="lbl">Avg delay (min)</div></div>
+      <div class="hstat"><div class="val" id="hs-cap">—</div><div class="lbl">Avg capacity util.</div></div>
+    </div>
+  </div>
+
+  <div class="not-connected" id="nc-banner">
+    <h4>⚠ Database not connected</h4>
+    <p>Running in skeleton mode. To connect:<br>
+      1. Copy <code>backend/.env.example</code> → <code>backend/.env</code><br>
+      2. Paste your Supabase <code>DATABASE_URL</code><br>
+      3. Restart Flask: <code>python app.py</code>
+    </p>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="showPanel('p-overview',this)">Overview</button>
+    <button class="nav-btn" onclick="showPanel('p-routes',this)">Route delays</button>
+    <button class="nav-btn" onclick="showPanel('p-passengers',this)">Passenger load</button>
+    <button class="nav-btn" onclick="showPanel('p-weather',this)">Weather impact</button>
+    <button class="nav-btn" onclick="showPanel('p-vehicles',this)">Fleet</button>
+    <button class="nav-btn" onclick="showPanel('p-borough',this)">Borough search</button>
+    <button class="nav-btn" onclick="showPanel('p-sql',this)">SQL queries</button>
+  </div>
+
+  <!-- ── OVERVIEW ── -->
+  <div class="panel active" id="p-overview">
+
+    <!-- KEY TAKEAWAYS -->
+    <div class="takeaways-card">
+      <h3>Key takeaways</h3>
+      <div class="takeaway-grid">
+        <div class="taway"><div class="taway-icon">🚦</div><div class="taway-title">Congestion zone impact</div><div class="taway-val" id="tk-cz-diff">—</div><div class="taway-desc">Average extra delay on CZ routes vs non-CZ routes</div></div>
+        <div class="taway"><div class="taway-icon">🌧</div><div class="taway-title">Heavy rain vs clear</div><div class="taway-val" id="tk-rain-diff">—</div><div class="taway-desc">Average extra delay during heavy rain compared to clear conditions</div></div>
+        <div class="taway"><div class="taway-icon">🚌</div><div class="taway-title">Fleet age penalty</div><div class="taway-val" id="tk-fleet-diff">—</div><div class="taway-desc">Average extra delay: worst vs best emission standard in fleet</div></div>
+        <div class="taway"><div class="taway-icon">⏰</div><div class="taway-title">Peak hour overcrowding</div><div class="taway-val" id="tk-peak-hour">—</div><div class="taway-desc">Hour of day with the most overcrowded trips</div></div>
+        <div class="taway"><div class="taway-icon">📍</div><div class="taway-title">Worst borough</div><div class="taway-val" id="tk-worst-borough">—</div><div class="taway-desc">Borough with the highest average route delay</div></div>
+        <div class="taway"><div class="taway-icon">👥</div><div class="taway-title">Overcrowding overrun</div><div class="taway-val" id="tk-overrun-diff">—</div><div class="taway-desc">Extra overrun on trips above 90% capacity vs below 50%</div></div>
+      </div>
+    </div>
+
+    <div class="sec">Summary — all three research questions at a glance</div>
+    <div class="g2">
+      <div class="card">
+        <h3>Avg delay by route — top 10</h3>
+        <div class="sub">Ten most delayed routes. Dark green = congestion zone route.</div>
+        <div id="ov-route-chart" style="height:340px"></div>
+      </div>
+      <div class="card">
+        <h3>Weather vs average delay</h3>
+        <div class="sub">Worst conditions first — heavy rain and snow cause the most disruption</div>
+        <div id="ov-weather-chart" style="height:340px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Capacity utilisation vs delay — scatter</h3>
+      <div class="sub">Each point = one trip (500 sampled). Higher occupancy correlates with longer delays. ▲ = overcrowded (&gt;90%).</div>
+      <div id="ov-scatter" style="height:280px"></div>
+      <div class="badges">
+        <span class="badge bi" id="b-cz">—</span>
+        <span class="badge bw" id="b-cap">—</span>
+        <span class="badge bo" id="b-weather">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ROUTE DELAYS ── -->
+  <div class="panel" id="p-routes">
+    <div class="sec">Research question 1 — Which routes are most susceptible to delay?</div>
+    <div class="card">
+      <h3>Average delay by route</h3>
+      <div class="sub">Dark green = congestion zone route (CZ). Use filter to isolate.</div>
+      <div class="filter-row">
+        <button class="fchip on" onclick="setRouteFilter('all',this)">All routes</button>
+        <button class="fchip" onclick="setRouteFilter('cz',this)">Congestion zone only</button>
+        <button class="fchip" onclick="setRouteFilter('ncz',this)">Non-CZ only</button>
+      </div>
+      <div id="route-bars"></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <h3>Delay distribution</h3>
+        <div class="sub">Trip count by delay bracket — the story is in the 16+ min tail</div>
+        <div id="delay-dist" style="height:240px"></div>
+      </div>
+      <div class="card">
+        <h3>Congestion zone vs non-CZ</h3>
+        <div class="sub">Average delay — CZ routes are significantly worse</div>
+        <div id="cz-compare" style="height:240px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Average delay by borough — top 10</h3>
+      <div class="sub">Ten highest-delay boroughs. Central London boroughs dominate.</div>
+      <div id="borough-chart" style="height:320px"></div>
+    </div>
+    <div class="card">
+      <h3>Query 1 results — top 10 most delayed routes</h3>
+      <div class="sub">route_name · start_borough · end_borough · congestion_zone · avg_delay_mins · total_trips</div>
+      <div class="tbl-wrap"><div id="route-table"></div></div>
+    </div>
+  </div>
+
+  <!-- ── PASSENGERS ── -->
+  <div class="panel" id="p-passengers">
+    <div class="sec">Research question 2 — Does passenger count correlate with trip duration?</div>
+    <div class="g2">
+      <div class="card">
+        <h3>Capacity utilisation vs delay</h3>
+        <div class="sub">Scatter — 500 sampled trips. Overcrowded trips cluster at higher delays.</div>
+        <div id="p-scatter" style="height:280px"></div>
+      </div>
+      <div class="card">
+        <h3>Overcrowded trips by hour of day</h3>
+        <div class="sub">Trips exceeding 90% capacity — 08:00 and 17:00 peak clearly visible</div>
+        <div id="p-peak" style="height:280px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Query 2 results</h3>
+      <div class="sub">capacity_bracket · trip_count · avg_overrun_mins · avg_peak_passengers</div>
+      <div class="tbl-wrap"><div id="pass-table"></div></div>
+    </div>
+  </div>
+
+  <!-- ── WEATHER ── -->
+  <div class="panel" id="p-weather">
+    <div class="sec">Research question 3 — Do adverse weather conditions worsen route performance?</div>
+    <div class="g2">
+      <div class="card">
+        <h3>Avg delay by weather condition</h3>
+        <div class="sub">Heavy rain causes the most disruption — worst conditions shown first</div>
+        <div id="w-bar" style="height:280px"></div>
+      </div>
+      <div class="card">
+        <h3>Condition summary</h3>
+        <div class="sub">Average delay per weather type observed across all trips</div>
+        <div class="wgrid" id="w-grid"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Rainfall intensity vs delay</h3>
+      <div class="sub">As rainfall increases (mm), average delay rises — positive correlation across all routes</div>
+      <div id="w-rain" style="height:260px"></div>
+    </div>
+    <div class="card">
+      <h3>Query 3 results</h3>
+      <div class="sub">condition_label · trip_count · avg_delay_mins · avg_rainfall_mm · avg_temp_c · avg_visibility</div>
+      <div class="tbl-wrap"><div id="weather-table"></div></div>
+    </div>
+  </div>
+
+  <!-- ── FLEET ── -->
+  <div class="panel" id="p-vehicles">
+    <div class="sec">Fleet analysis — emission standard and vehicle type vs performance</div>
+    <div class="g2">
+      <div class="card">
+        <h3>Avg delay by emission standard</h3>
+        <div class="sub">Euro V vehicles average higher delays than Zero Emission — the fleet age story</div>
+        <div id="veh-emission-delay" style="height:280px"></div>
+      </div>
+      <div class="card">
+        <h3>Delay vs capacity — by emission standard</h3>
+        <div class="sub">Older vehicles are more overcrowded AND slower — a compounding problem</div>
+        <div id="veh-bubble" style="height:280px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Avg delay by vehicle type and emission standard</h3>
+      <div class="sub">Full breakdown — shows within-type variation caused by fleet age</div>
+      <div id="veh-grouped" style="height:260px"></div>
+    </div>
+    <div class="card">
+      <h3>Fleet summary table</h3>
+      <div class="sub">vehicle_type · emission_standard · capacity · total_trips · avg_delay_mins · avg_capacity_pct</div>
+      <div class="tbl-wrap"><div id="veh-table"></div></div>
+    </div>
+  </div>
+
+  <!-- ── BOROUGH SEARCH ── -->
+  <div class="panel" id="p-borough">
+    <div class="sec">Borough analytics — search for a specific London borough</div>
+    <div class="search-card">
+      <h3>Borough search</h3>
+      <div class="search-row">
+        <input class="borough-input" id="borough-input" type="text" placeholder="e.g. Westminster, Hackney, Southwark…" autocomplete="off">
+        <button class="search-btn" onclick="searchBorough()">Search</button>
+      </div>
+      <div class="borough-suggestions">
+        <span class="bsug" onclick="quickSearch('Westminster')">Westminster</span>
+        <span class="bsug" onclick="quickSearch('Hackney')">Hackney</span>
+        <span class="bsug" onclick="quickSearch('Southwark')">Southwark</span>
+        <span class="bsug" onclick="quickSearch('Tower Hamlets')">Tower Hamlets</span>
+        <span class="bsug" onclick="quickSearch('Lambeth')">Lambeth</span>
+        <span class="bsug" onclick="quickSearch('Camden')">Camden</span>
+        <span class="bsug" onclick="quickSearch('Islington')">Islington</span>
+        <span class="bsug" onclick="quickSearch('Greenwich')">Greenwich</span>
+        <span class="bsug" onclick="quickSearch('Lewisham')">Lewisham</span>
+        <span class="bsug" onclick="quickSearch('Enfield')">Enfield</span>
+      </div>
+      <div class="search-results" id="search-results">
+        <div class="sr-title" id="sr-title">—</div>
+        <div class="sr-sub" id="sr-sub">—</div>
+        <div class="sr-stats" id="sr-stats"></div>
+        <div class="g2">
+          <div class="card" style="margin-bottom:0">
+            <h3>Routes through this borough — top 10</h3>
+            <div class="sub">Sorted by average delay. Includes all routes with a stop in this borough.</div>
+            <div id="sr-routes-chart" style="height:280px"></div>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <h3>Weather impact in this borough</h3>
+            <div class="sub">Average delay by weather condition for routes serving this borough</div>
+            <div id="sr-weather-chart" style="height:280px"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <h3>Peak hour overcrowding</h3>
+          <div class="sub">Overcrowded trips by hour for routes serving this borough</div>
+          <div id="sr-peak-chart" style="height:220px"></div>
+        </div>
+        <div class="card">
+          <h3>Route breakdown table</h3>
+          <div class="tbl-wrap"><div id="sr-table"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SQL QUERIES ── -->
+  <div class="panel" id="p-sql">
+    <div class="sec">Multi-table SQL queries powering this dashboard</div>
+
+    <div class="sql-card">
+      <div class="sql-header">
+        <h3>Query 1 — Routes most susceptible to delay</h3>
+        <div class="sub">Joins Trip → Route · Groups by route · Orders by avg_delay_mins DESC</div>
+      </div>
+      <div class="sql-body">
+        <div class="code-block"><span class="cm">-- Q1: Which routes are most susceptible to delay?</span>
+<span class="kw">SELECT</span>
+    r.route_name, r.start_borough, r.end_borough,
+    r.passes_congestion_zone                        <span class="kw">AS</span> congestion_zone,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(t.delay_mins)::numeric, 1)           <span class="kw">AS</span> avg_delay_mins,
+    <span class="fn">ROUND</span>(<span class="fn">MIN</span>(t.delay_mins)::numeric, 1)           <span class="kw">AS</span> min_delay,
+    <span class="fn">ROUND</span>(<span class="fn">MAX</span>(t.delay_mins)::numeric, 1)           <span class="kw">AS</span> max_delay,
+    <span class="fn">COUNT</span>(t.trip_id)                               <span class="kw">AS</span> total_trips
+<span class="kw">FROM</span> trip t
+<span class="kw">JOIN</span> route r <span class="kw">ON</span> t.route_id = r.route_id
+<span class="kw">GROUP BY</span> r.route_name, r.start_borough, r.end_borough, r.passes_congestion_zone
+<span class="kw">ORDER BY</span> avg_delay_mins <span class="kw">DESC</span>;</div>
+        <div class="tbl-wrap"><div id="sql-q1-result"></div></div>
+      </div>
+    </div>
+
+    <div class="sql-card">
+      <div class="sql-header">
+        <h3>Query 2 — Passenger count correlation with trip duration</h3>
+        <div class="sub">Joins Trip → Passenger_Record · Groups by capacity bracket · Orders by avg_overrun_mins DESC</div>
+      </div>
+      <div class="sql-body">
+        <div class="code-block"><span class="cm">-- Q2: Is there a correlation between passenger count and trip overrun?</span>
+<span class="kw">SELECT</span>
+    <span class="kw">CASE</span>
+        <span class="kw">WHEN</span> pr.capacity_utilisation_pct &lt; 50 <span class="kw">THEN</span> '&lt;50%'
+        <span class="kw">WHEN</span> pr.capacity_utilisation_pct &lt; 75 <span class="kw">THEN</span> '50-75%'
+        <span class="kw">WHEN</span> pr.capacity_utilisation_pct &lt; 90 <span class="kw">THEN</span> '75-90%'
+        <span class="kw">ELSE</span> '&gt;90%'
+    <span class="kw">END</span>                                                           <span class="kw">AS</span> capacity_bracket,
+    <span class="fn">COUNT</span>(*)                                                       <span class="kw">AS</span> trip_count,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(t.actual_duration_mins - t.scheduled_duration_mins)
+          ::numeric, 1)                                             <span class="kw">AS</span> avg_overrun_mins,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(pr.peak_count)::numeric, 0)                         <span class="kw">AS</span> avg_peak_passengers
+<span class="kw">FROM</span> trip t
+<span class="kw">JOIN</span> passenger_record pr <span class="kw">ON</span> t.trip_id = pr.trip_id
+<span class="kw">GROUP BY</span> capacity_bracket
+<span class="kw">ORDER BY</span> avg_overrun_mins <span class="kw">DESC</span>;</div>
+        <div class="tbl-wrap"><div id="sql-q2-result"></div></div>
+      </div>
+    </div>
+
+    <div class="sql-card">
+      <div class="sql-header">
+        <h3>Query 3 — Weather conditions vs route performance</h3>
+        <div class="sub">Joins Trip → Weather_Condition · Groups by condition_label · Orders by avg_delay_mins DESC</div>
+      </div>
+      <div class="sql-body">
+        <div class="code-block"><span class="cm">-- Q3: Do adverse weather conditions negatively influence route performance?</span>
+<span class="kw">SELECT</span>
+    wc.condition_label,
+    <span class="fn">COUNT</span>(t.trip_id)                              <span class="kw">AS</span> trip_count,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(t.delay_mins)::numeric, 1)         <span class="kw">AS</span> avg_delay_mins,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(wc.rainfall_mm)::numeric, 2)       <span class="kw">AS</span> avg_rainfall_mm,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(wc.temperature_c)::numeric, 1)     <span class="kw">AS</span> avg_temp_c,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(wc.visibility_level)::numeric, 1)  <span class="kw">AS</span> avg_visibility
+<span class="kw">FROM</span> trip t
+<span class="kw">JOIN</span> weather_condition wc <span class="kw">ON</span> t.weather_id = wc.weather_id
+<span class="kw">GROUP BY</span> wc.condition_label
+<span class="kw">ORDER BY</span> avg_delay_mins <span class="kw">DESC</span>;</div>
+        <div class="tbl-wrap"><div id="sql-q3-result"></div></div>
+      </div>
+    </div>
+
+    <div class="sql-card">
+      <div class="sql-header">
+        <h3>Query 4 — Congestion zone vs non-CZ performance comparison</h3>
+        <div class="sub">Joins Trip → Route · Groups by zone type · Directly compares CZ and non-CZ route performance</div>
+      </div>
+      <div class="sql-body">
+        <div class="code-block"><span class="cm">-- Q4: How does congestion zone exposure affect route performance?</span>
+<span class="kw">SELECT</span>
+    <span class="kw">CASE WHEN</span> r.passes_congestion_zone = 1
+         <span class="kw">THEN</span> 'Congestion Zone'
+         <span class="kw">ELSE</span> 'Non-Congestion Zone'
+    <span class="kw">END</span>                                            <span class="kw">AS</span> zone_type,
+    <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> r.route_id)                    <span class="kw">AS</span> route_count,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(t.delay_mins)::numeric, 1)          <span class="kw">AS</span> avg_delay_mins,
+    <span class="fn">ROUND</span>(<span class="fn">MIN</span>(t.delay_mins)::numeric, 1)          <span class="kw">AS</span> min_delay,
+    <span class="fn">ROUND</span>(<span class="fn">MAX</span>(t.delay_mins)::numeric, 1)          <span class="kw">AS</span> max_delay,
+    <span class="fn">COUNT</span>(t.trip_id)                              <span class="kw">AS</span> total_trips
+<span class="kw">FROM</span> trip t
+<span class="kw">JOIN</span> route r <span class="kw">ON</span> t.route_id = r.route_id
+<span class="kw">GROUP BY</span> r.passes_congestion_zone
+<span class="kw">ORDER BY</span> avg_delay_mins <span class="kw">DESC</span>;</div>
+        <div class="tbl-wrap"><div id="sql-q4-result"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Public Transport Insight System · Prototype · Transport for London · Business Organisation Report</div>
+</div>
+
+<script>
+const API = "";
+
+// ── layout helper (deep merge) ────────────────────────────────
+const BASE = {
+  paper_bgcolor:"transparent", plot_bgcolor:"transparent",
+  font:{family:"'DM Sans', sans-serif",size:11,color:"#2d3a2e"},
+  margin:{t:12,r:12,b:42,l:50},
+  xaxis:{gridcolor:"rgba(0,0,0,0.04)",linecolor:"rgba(0,0,0,0.07)",tickfont:{size:10},rangemode:"tozero"},
+  yaxis:{gridcolor:"rgba(0,0,0,0.04)",linecolor:"rgba(0,0,0,0.07)",tickfont:{size:10},rangemode:"tozero"},
+};
+function L(o={}){
+  const r=Object.assign({},BASE,o);
+  if(o.xaxis) r.xaxis=Object.assign({},BASE.xaxis,o.xaxis);
+  if(o.yaxis) r.yaxis=Object.assign({},BASE.yaxis,o.yaxis);
+  if(o.margin) r.margin=Object.assign({},BASE.margin,o.margin);
+  return r;
+}
+const PC={displayModeBar:false,responsive:true};
+const SAGE_PALETTE=['#3d6641','#4a7050','#5e8a60','#7a9e7e','#9ab89e','#b8d4bb','#c8ddc9'];
+
+// ── cache — populated as data loads, used by takeaways ────────
+const _cache={};
+
+function showPanel(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  setTimeout(()=>window.dispatchEvent(new Event('resize')),60);
+}
+
+async function apiFetch(path){
+  try{const r=await fetch(API+path);return r.ok?r.json():null;}
+  catch{return null;}
+}
+
+// ── table renderer — top 10 ───────────────────────────────────
+const DELAY_COLS=['avg_delay_mins','min_delay','max_delay','avg_overrun_mins'];
+function renderTable(rows,el,limit=10){
+  if(!rows||!rows.length){
+    el.innerHTML='<p style="font-size:11px;color:var(--muted);padding:.5rem 0">No data — connect your database.</p>';
+    return;
+  }
+  const data=rows.slice(0,limit);
+  const cols=Object.keys(data[0]);
+  let h=`<table class="tbl"><thead><tr>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead><tbody>`;
+  data.forEach(r=>{
+    h+='<tr>'+cols.map(c=>{
+      const v=r[c];
+      if(DELAY_COLS.includes(c)&&v!=null){const cls=v>15?'pr':v>8?'pa':'pg';return `<td><span class="pill ${cls}">${v}</span></td>`;}
+      // FIX: congestion_zone is integer 0/1 from DB — use == not ===
+      if(c==='congestion_zone') return `<td>${v==1?'✓ Yes':'—'}</td>`;
+      return `<td>${v??'—'}</td>`;
+    }).join('')+'</tr>';
+  });
+  if(rows.length>limit) h+=`<tr><td colspan="${cols.length}" style="font-size:10px;color:var(--muted);padding:6px 10px">Showing top ${limit} of ${rows.length} rows</td></tr>`;
+  el.innerHTML=h+'</tbody></table>';
+}
+
+// ── route bars ────────────────────────────────────────────────
+let routeData=[],routeFilter='all';
+function buildRouteBars(){
+  let d=[...routeData];
+  // FIX: congestion_zone is integer 0/1 — compare with == 1
+  if(routeFilter==='cz')  d=d.filter(r=>r.congestion_zone==1);
+  if(routeFilter==='ncz') d=d.filter(r=>r.congestion_zone==0);
+  const mx=Math.max(...d.map(r=>r.avg_delay_mins),1);
+  document.getElementById('route-bars').innerHTML=d.map(r=>`
+    <div class="rbar">
+      <span class="name" title="${r.route_name}">${r.route_name}</span>
+      <div class="track"><div class="fill" style="width:${Math.round(r.avg_delay_mins/mx*100)}%;background:${r.congestion_zone==1?'#3d6641':'#9ab89e'}"></div></div>
+      <span class="dval">${r.avg_delay_mins}</span>
+      ${r.congestion_zone==1?'<span class="cztag">CZ</span>':'<span class="cztag" style="opacity:0">CZ</span>'}
+    </div>`).join('');
+}
+function setRouteFilter(f,btn){
+  routeFilter=f;
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');
+  buildRouteBars();
+}
+
+// ── KEY TAKEAWAYS — called after ALL data loads ───────────────
+function buildTakeaways(){
+  const routes  =_cache.routes  ||[];
+  const weather =_cache.weather ||[];
+  const overrun =_cache.overrun ||[];
+  const peak    =_cache.peak    ||[];
+  const vehicles=_cache.vehicles||[];
+  const borough =_cache.borough ||[];
+
+  // CZ vs non-CZ diff — FIX: compare congestion_zone == 1
+  const czR=routes.filter(r=>r.congestion_zone==1);
+  const nR =routes.filter(r=>r.congestion_zone==0);
+  if(czR.length&&nR.length){
+    const czAvg=czR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/czR.length;
+    const nAvg =nR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/nR.length;
+    document.getElementById('tk-cz-diff').textContent=`+${(czAvg-nAvg).toFixed(1)} min`;
+  }
+
+  // Heavy rain vs clear
+  const hr=weather.find(r=>r.condition_label==='Heavy Rain');
+  const cl=weather.find(r=>r.condition_label==='Clear');
+  if(hr&&cl) document.getElementById('tk-rain-diff').textContent=`+${(Number(hr.avg_delay_mins)-Number(cl.avg_delay_mins)).toFixed(1)} min`;
+
+  // Fleet age: use worst vs best emission standard dynamically — no hardcoded names
+  if(vehicles.length>=2){
+    const vSorted=[...vehicles].sort((a,b)=>Number(b.avg_delay_mins)-Number(a.avg_delay_mins));
+    const seen=new Set();
+    const byStd=vSorted.filter(r=>{if(seen.has(r.emission_standard))return false;seen.add(r.emission_standard);return true;});
+    if(byStd.length>=2){
+      const diff=(Number(byStd[0].avg_delay_mins)-Number(byStd[byStd.length-1].avg_delay_mins)).toFixed(1);
+      document.getElementById('tk-fleet-diff').textContent=`+${diff} min`;
+    }
+  }
+
+  // Peak hour
+  if(peak.length){
+    const maxP=peak.reduce((a,b)=>Number(b.overcrowded_trips)>Number(a.overcrowded_trips)?b:a);
+    document.getElementById('tk-peak-hour').textContent=`${String(Number(maxP.hour)).padStart(2,'0')}:00`;
+  }
+
+  // Worst borough
+  if(borough.length) document.getElementById('tk-worst-borough').textContent=borough[0].borough;
+
+  // Overrun diff: sort by overrun desc, take highest and lowest — no hardcoded bracket strings
+  if(overrun.length>=2){
+    const oSorted=[...overrun].sort((a,b)=>Number(b.avg_overrun_mins)-Number(a.avg_overrun_mins));
+    const hi=Number(oSorted[0].avg_overrun_mins);
+    const lo=Number(oSorted[oSorted.length-1].avg_overrun_mins);
+    document.getElementById('tk-overrun-diff').textContent=`+${(hi-lo).toFixed(1)} min`;
+  }
+}
+
+// ── STATUS ────────────────────────────────────────────────────
+async function checkStatus(){
+  const s=await apiFetch('/api/status');
+  const dot=document.getElementById('db-dot');
+  const txt=document.getElementById('db-txt');
+  if(s&&s.connected){dot.className='dot ok';txt.textContent='Supabase (PostgreSQL)';document.getElementById('nc-banner').style.display='none';}
+  else{dot.className='dot err';txt.textContent='DB not connected';document.getElementById('nc-banner').style.display='block';}
+}
+
+async function loadHero(){
+  const d=await apiFetch('/api/hero');
+  if(!d||d.error)return;
+  document.getElementById('hs-routes').textContent=d.total_routes??'—';
+  document.getElementById('hs-trips').textContent=Number(d.total_trips).toLocaleString();
+  document.getElementById('hs-delay').textContent=(d.avg_delay??'—')+' min';
+  document.getElementById('hs-cap').textContent=(d.avg_capacity??'—')+'%';
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────────
+async function loadOverview(){
+  const [routes,weather,scatter]=await Promise.all([
+    apiFetch('/api/routes/delays'),
+    apiFetch('/api/weather/delays'),
+    apiFetch('/api/passengers/scatter'),
+  ]);
+
+  if(routes&&!routes.error){
+    _cache.routes=routes;
+    // FIX: top 10, taller chart so all 10 bars are visible
+    const top10=[...routes].sort((a,b)=>b.avg_delay_mins-a.avg_delay_mins).slice(0,10);
+    Plotly.newPlot('ov-route-chart',[{
+      type:'bar',
+      x:top10.map(r=>r.route_name),
+      y:top10.map(r=>r.avg_delay_mins),
+      marker:{color:top10.map(r=>r.congestion_zone==1?'#3d6641':'#9ab89e'),line:{width:0}},
+      hovertemplate:'%{x}<br>Avg delay: %{y} min<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'},
+           xaxis:{tickfont:{size:9},tickangle:-40},
+           margin:{t:12,r:12,b:80,l:50}}),PC);
+  }
+
+  if(weather&&!weather.error){
+    _cache.weather=weather;
+    // FIX: sort worst first, vertical bar chart starting at 0
+    // ascending left-to-right: best (Clear) → worst (Heavy Rain)
+    const ws=[...weather].sort((a,b)=>a.avg_delay_mins-b.avg_delay_mins);
+    Plotly.newPlot('ov-weather-chart',[{
+      type:'bar',
+      x:ws.map(r=>r.condition_label),
+      y:ws.map(r=>r.avg_delay_mins),
+      marker:{color:[...SAGE_PALETTE].reverse().slice(0,ws.length),line:{width:0}},
+      hovertemplate:'%{x}: %{y} min avg delay<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'},
+           margin:{t:12,r:12,b:60,l:50}}),PC);
+  }
+
+  if(scatter&&!scatter.error){
+    const norm=scatter.filter(r=>!r.overcrowded);
+    const over=scatter.filter(r=> r.overcrowded);
+    const yMax=Math.ceil(Math.max(...scatter.map(r=>Number(r.delay_mins)))*1.08);
+    Plotly.newPlot('ov-scatter',[
+      {type:'scatter',mode:'markers',name:'Standard',x:norm.map(r=>r.capacity_pct),y:norm.map(r=>r.delay_mins),
+       marker:{color:'rgba(122,158,126,0.45)',size:5},hovertemplate:'Cap: %{x}%<br>%{y} min<extra>Standard</extra>'},
+      {type:'scatter',mode:'markers',name:'Overcrowded (>90%)',x:over.map(r=>r.capacity_pct),y:over.map(r=>r.delay_mins),
+       marker:{color:'rgba(61,102,65,0.85)',size:6,symbol:'triangle-up'},hovertemplate:'Cap: %{x}%<br>%{y} min<extra>Overcrowded</extra>'}
+    ],L({xaxis:{title:{text:'Capacity utilisation (%)',font:{size:10}},range:[0,105]},
+         yaxis:{title:{text:'Delay (min)',font:{size:10}},range:[0,yMax]},
+         legend:{font:{size:10},bgcolor:'transparent'},margin:{t:12,r:12,b:50,l:55}}),PC);
+
+    if(routes&&!routes.error){
+      const czR=routes.filter(r=>r.congestion_zone==1);
+      const nR =routes.filter(r=>r.congestion_zone==0);
+      if(czR.length&&nR.length){
+        const czY=(czR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/czR.length).toFixed(1);
+        const czN=(nR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/nR.length).toFixed(1);
+        document.getElementById('b-cz').textContent=`CZ routes avg ${czY} min vs ${czN} min non-CZ`;
+      }
+    }
+    const hw=weather?.find(r=>r.condition_label==='Heavy Rain');
+    const cw=weather?.find(r=>r.condition_label==='Clear');
+    if(hw&&cw) document.getElementById('b-weather').textContent=`Heavy rain avg ${hw.avg_delay_mins} min vs ${cw.avg_delay_mins} min in clear conditions`;
+    if(over.length){
+      const avg=(over.reduce((a,r)=>a+Number(r.delay_mins),0)/over.length).toFixed(1);
+      document.getElementById('b-cap').textContent=`Overcrowded trips (>90%) avg ${avg} min delay`;
+    }
+  }
+}
+
+// ── ROUTES PANEL ─────────────────────────────────────────────
+async function loadRoutes(){
+  const [delays,dist,borough]=await Promise.all([
+    apiFetch('/api/routes/delays'),
+    apiFetch('/api/routes/delay-distribution'),
+    apiFetch('/api/routes/by-borough'),
+  ]);
+
+  if(delays&&!delays.error){
+    routeData=delays; buildRouteBars();
+    renderTable(delays,document.getElementById('route-table'),10);
+    const czR=delays.filter(r=>r.congestion_zone==1);
+    const nR =delays.filter(r=>r.congestion_zone==0);
+    const czY=(czR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/(czR.length||1)).toFixed(1);
+    const czN=(nR.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/(nR.length||1)).toFixed(1);
+    Plotly.newPlot('cz-compare',[{
+      type:'bar',x:['Non-CZ routes','Congestion zone routes'],y:[+czN,+czY],
+      marker:{color:['#9ab89e','#3d6641'],line:{width:0}},
+      text:[czN,czY],textposition:'outside',
+      hovertemplate:'%{x}<br>%{y} min<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'},margin:{t:32,r:12,b:42,l:50}}),PC);
+  }
+
+  if(dist&&!dist.error){
+    const bColours=dist.map(r=>{
+      if(r.bracket==='16+') return '#3d6641';if(r.bracket==='12-16') return '#4a7050';
+      if(r.bracket==='9-12')return '#5e8a60';if(r.bracket==='6-9')  return '#7a9e7e';
+      if(r.bracket==='3-6') return '#9ab89e';return '#b8d4bb';
+    });
+    Plotly.newPlot('delay-dist',[{
+      type:'bar',x:dist.map(r=>r.bracket),y:dist.map(r=>r.trip_count),
+      marker:{color:bColours,line:{width:0}},
+      hovertemplate:'%{x} min: %{y} trips<extra></extra>'
+    }],L({xaxis:{title:{text:'Delay bracket (min)',font:{size:10}}},yaxis:{title:{text:'Trip count',font:{size:10}},rangemode:'tozero'}}),PC);
+  }
+
+  if(borough&&!borough.error){
+    _cache.borough=borough;
+    // FIX: top 10, reverse so highest is at top of horizontal bar
+    const top10b=[...borough].slice(0,10).reverse();
+    Plotly.newPlot('borough-chart',[{
+      type:'bar',orientation:'h',
+      x:top10b.map(r=>r.avg_delay_mins),
+      y:top10b.map(r=>r.borough),
+      marker:{
+        color:top10b.map(r=>r.avg_delay_mins),
+        colorscale:[[0,'#b8d4bb'],[0.5,'#5e8a60'],[1,'#3d6641']],
+        cmin:0,cmax:Math.max(...top10b.map(r=>r.avg_delay_mins)),
+        showscale:false,line:{width:0}
+      },
+      hovertemplate:'%{y}<br>Avg delay: %{x} min<extra></extra>'
+    }],L({xaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'},margin:{t:12,r:20,b:42,l:175},height:320}),PC);
+  }
+}
+
+// ── PASSENGERS PANEL ─────────────────────────────────────────
+async function loadPassengers(){
+  const [scatter,overrun,peak]=await Promise.all([
+    apiFetch('/api/passengers/scatter'),
+    apiFetch('/api/passengers/overrun-by-bracket'),
+    apiFetch('/api/passengers/peak-hours'),
+  ]);
+
+  if(scatter&&!scatter.error){
+    const norm=scatter.filter(r=>!r.overcrowded);
+    const over=scatter.filter(r=> r.overcrowded);
+    const yMax=Math.ceil(Math.max(...scatter.map(r=>Number(r.delay_mins)))*1.08);
+    Plotly.newPlot('p-scatter',[
+      {type:'scatter',mode:'markers',name:'Standard',x:norm.map(r=>r.capacity_pct),y:norm.map(r=>r.delay_mins),
+       marker:{color:'rgba(122,158,126,0.4)',size:5},hovertemplate:'%{x}% · %{y} min<extra>Standard</extra>'},
+      {type:'scatter',mode:'markers',name:'Overcrowded (>90%)',x:over.map(r=>r.capacity_pct),y:over.map(r=>r.delay_mins),
+       marker:{color:'rgba(61,102,65,0.85)',size:7,symbol:'triangle-up'},hovertemplate:'%{x}% · %{y} min<extra>Overcrowded</extra>'}
+    ],L({xaxis:{title:{text:'Capacity utilisation (%)',font:{size:10}},range:[0,105]},
+         yaxis:{title:{text:'Delay (min)',font:{size:10}},range:[0,yMax]},
+         legend:{font:{size:10},bgcolor:'transparent'},margin:{t:12,r:12,b:50,l:55}}),PC);
+  }
+
+  if(peak&&!peak.error&&peak.length){
+    _cache.peak=peak;
+    const hrs=Array.from({length:16},(_,i)=>i+6);
+    const counts=hrs.map(h=>peak.find(r=>Number(r.hour)===h)?.overcrowded_trips||0);
+    const peakMax=Math.max(...counts,1);
+    Plotly.newPlot('p-peak',[{
+      type:'bar',x:hrs.map(h=>`${String(h).padStart(2,'0')}:00`),y:counts,
+      marker:{color:counts.map(v=>v>=peakMax*0.8?'#3d6641':v>=peakMax*0.5?'#7a9e7e':'#b8d4bb'),line:{width:0}},
+      hovertemplate:'%{x}: %{y} overcrowded trips<extra></extra>'
+    }],L({xaxis:{tickangle:-45},yaxis:{title:{text:'Overcrowded trips',font:{size:10}},rangemode:'tozero'}}),PC);
+  }
+
+  if(overrun&&!overrun.error&&overrun.length){
+    _cache.overrun=overrun;
+    // Sort by overrun desc so index 0 = most overcrowded, last = least
+    // This avoids hardcoded bracket strings which can break if labels differ
+    const oSorted=[...overrun].sort((a,b)=>Number(b.avg_overrun_mins)-Number(a.avg_overrun_mins));
+    const labels=oSorted.map(r=>r.capacity_bracket);
+    const vals=oSorted.map(r=>Number(r.avg_overrun_mins)||0);
+    // Colours: darker = more overcrowded (index 0 = worst)
+    const oColours=['#3d6641','#5e8a60','#9ab89e','#c8ddc9'].slice(0,oSorted.length);
+    const oMax=Math.max(...vals,1)*1.2;
+    Plotly.newPlot('p-overrun',[{
+      type:'bar',x:labels,y:vals,
+      marker:{color:oColours,line:{width:0}},
+      text:vals.map(v=>v.toFixed(1)),textposition:'outside',
+      hovertemplate:'%{x}<br>%{y} min overrun<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg overrun (min)',font:{size:10}},range:[0,oMax],rangemode:'tozero'},margin:{t:32,r:12,b:42,l:55}}),PC);
+    const hi=vals[0], lo=vals[vals.length-1];
+    document.getElementById('p-b1').textContent=`${labels[0]} capacity avg ${hi.toFixed(1)} min overrun`;
+    document.getElementById('p-b2').textContent=`${labels[labels.length-1]} capacity avg ${lo.toFixed(1)} min overrun`;
+    renderTable(overrun,document.getElementById('pass-table'),10);
+  }
+}
+
+// ── WEATHER PANEL ─────────────────────────────────────────────
+async function loadWeather(){
+  const [delays,rain]=await Promise.all([
+    apiFetch('/api/weather/delays'),
+    apiFetch('/api/weather/rainfall-scatter'),
+  ]);
+
+  if(delays&&!delays.error){
+    _cache.weather=delays;
+    const icons={'Heavy Rain':'🌧','Snow':'❄️','Fog':'🌫','Light Rain':'🌦','Windy':'🌬','Clear':'☀️'};
+    // ascending left-to-right: Clear (best) → Heavy Rain (worst)
+    const ws=[...delays].sort((a,b)=>a.avg_delay_mins-b.avg_delay_mins);
+    Plotly.newPlot('w-bar',[{
+      type:'bar',
+      x:ws.map(r=>r.condition_label),
+      y:ws.map(r=>r.avg_delay_mins),
+      marker:{color:[...SAGE_PALETTE].reverse().slice(0,ws.length),line:{width:0}},
+      hovertemplate:'%{x}: %{y} min avg delay<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'},
+           margin:{t:12,r:12,b:60,l:50}}),PC);
+
+    document.getElementById('w-grid').innerHTML=ws.map(r=>`
+      <div class="wcard">
+        <div class="wico">${icons[r.condition_label]||'🌡'}</div>
+        <div class="wval">${r.avg_delay_mins}</div>
+        <div class="wlbl">${r.condition_label}</div>
+      </div>`).join('');
+
+    renderTable(delays,document.getElementById('weather-table'),10);
+  }
+
+  if(rain&&!rain.error&&rain.length){
+    const rSorted=[...rain].sort((a,b)=>Number(a.rainfall_mm)-Number(b.rainfall_mm));
+    Plotly.newPlot('w-rain',[{
+      type:'scatter',mode:'markers+lines',
+      x:rSorted.map(r=>r.rainfall_mm),y:rSorted.map(r=>r.avg_delay),
+      marker:{color:rSorted.map(r=>r.rainfall_mm),colorscale:[[0,'#b8d4bb'],[1,'#3d6641']],size:9,line:{width:0}},
+      line:{color:'rgba(61,102,65,0.35)',width:1.5},
+      hovertemplate:'%{x}mm rainfall<br>%{y} min avg delay<extra></extra>'
+    }],L({xaxis:{title:{text:'Avg rainfall (mm)',font:{size:10}},rangemode:'tozero'},
+           yaxis:{title:{text:'Avg delay (min)',font:{size:10}},rangemode:'tozero'}}),PC);
+  }
+}
+
+// ── VEHICLES PANEL ────────────────────────────────────────────
+async function loadVehicles(){
+  const data=await apiFetch('/api/vehicles/summary');
+  if(!data||data.error||!data.length)return;
+  _cache.vehicles=data;
+
+  const sorted=[...data].sort((a,b)=>b.avg_delay_mins-a.avg_delay_mins);
+  const emMap={};
+  data.forEach(r=>{
+    if(!emMap[r.emission_standard])emMap[r.emission_standard]={delays:[],caps:[]};
+    emMap[r.emission_standard].delays.push(Number(r.avg_delay_mins));
+    emMap[r.emission_standard].caps.push(Number(r.avg_capacity_pct));
+  });
+  const emOrder=['Euro III','Euro IV','Euro V','Euro VI','Zero Emission'];
+  const emLabels=emOrder.filter(e=>emMap[e]);
+  const emDelays=emLabels.map(e=>{const arr=emMap[e].delays;return+(arr.reduce((a,v)=>a+v,0)/arr.length).toFixed(1);});
+  const emCaps=emLabels.map(e=>{const arr=emMap[e].caps;return+(arr.reduce((a,v)=>a+v,0)/arr.length).toFixed(1);});
+  const dMax=Math.max(...emDelays,1)*1.2;
+
+  // FIX: explicit range starting at 0
+  Plotly.newPlot('veh-emission-delay',[{
+    type:'bar',x:emLabels,y:emDelays,
+    marker:{color:SAGE_PALETTE.slice(0,emLabels.length),line:{width:0}},
+    text:emDelays,textposition:'outside',
+    hovertemplate:'%{x}<br>Avg delay: %{y} min<extra></extra>'
+  }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},range:[0,dMax]},margin:{t:32,r:12,b:42,l:55}}),PC);
+
+  const bubbleColours={'Euro III':'#3d6641','Euro IV':'#4a7050','Euro V':'#7a9e7e','Euro VI':'#9ab89e','Zero Emission':'#b8d4bb'};
+  const cMax=Math.max(...emCaps,1)*1.15;
+  Plotly.newPlot('veh-bubble',[{
+    type:'scatter',mode:'markers+text',
+    x:emCaps,y:emDelays,
+    text:emLabels,textposition:'top center',textfont:{size:9},
+    marker:{color:emLabels.map(e=>bubbleColours[e]||'#7a9e7e'),size:emLabels.map(e=>Math.max(16,emMap[e].delays.length*14)),line:{color:'rgba(255,255,255,0.6)',width:1.5},opacity:0.88},
+    hovertemplate:'%{text}<br>Avg capacity: %{x}%<br>Avg delay: %{y} min<extra></extra>'
+  }],L({xaxis:{title:{text:'Avg capacity utilisation (%)',font:{size:10}},range:[0,cMax]},
+        yaxis:{title:{text:'Avg delay (min)',font:{size:10}},range:[0,dMax]},
+        margin:{t:32,r:12,b:50,l:55}}),PC);
+
+  const gMax=Math.max(...sorted.map(r=>Number(r.avg_delay_mins)),1)*1.2;
+  Plotly.newPlot('veh-grouped',[{
+    type:'bar',
+    x:sorted.map(r=>`${r.vehicle_type} (${r.emission_standard})`),
+    y:sorted.map(r=>r.avg_delay_mins),
+    marker:{color:sorted.map(r=>{
+      if(r.emission_standard==='Euro III') return '#3d6641';
+      if(r.emission_standard==='Euro IV')  return '#4a7050';
+      if(r.emission_standard==='Euro V')   return '#7a9e7e';
+      if(r.emission_standard==='Euro VI')  return '#9ab89e';
+      return '#b8d4bb';
+    }),line:{width:0}},
+    hovertemplate:'%{x}<br>%{y} min<extra></extra>'
+  }],L({xaxis:{tickangle:-30,tickfont:{size:9}},yaxis:{title:{text:'Avg delay (min)',font:{size:10}},range:[0,gMax]},margin:{t:12,r:12,b:90,l:55}}),PC);
+
+  renderTable(data,document.getElementById('veh-table'),10);
+}
+
+// ── BOROUGH SEARCH ────────────────────────────────────────────
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement===document.getElementById('borough-input'))searchBorough();});
+function quickSearch(name){document.getElementById('borough-input').value=name;searchBorough();}
+
+async function searchBorough(){
+  const q=document.getElementById('borough-input').value.trim();
+  if(!q)return;
+  const el=document.getElementById('search-results');
+  const data=await apiFetch(`/api/borough/search?q=${encodeURIComponent(q)}`);
+
+  if(!data||data.error||!data.routes||data.routes.length===0){
+    document.getElementById('sr-title').textContent=`No results for "${q}"`;
+    document.getElementById('sr-sub').textContent='Try checking the spelling — use the quick-search chips above for guaranteed matches.';
+    document.getElementById('sr-stats').innerHTML='';
+    document.getElementById('sr-table').innerHTML='<p class="no-results">No routes found passing through this borough.</p>';
+    el.classList.add('visible');
+    return;
+  }
+
+  const {borough,routes,weather,peak}=data;
+  document.getElementById('sr-title').textContent=borough;
+  document.getElementById('sr-sub').textContent=`${routes.length} route${routes.length!==1?'s':''} pass through this borough (matched via stop data)`;
+
+  const totalTrips=routes.reduce((a,r)=>a+Number(r.total_trips),0);
+  const avgDelay=(routes.reduce((a,r)=>a+Number(r.avg_delay_mins),0)/routes.length).toFixed(1);
+  const avgCap=(routes.reduce((a,r)=>a+Number(r.avg_capacity_pct),0)/routes.length).toFixed(1);
+  const czCount=routes.filter(r=>r.congestion_zone==1).length;
+  document.getElementById('sr-stats').innerHTML=`
+    <div class="sr-stat"><div class="v">${routes.length}</div><div class="l">Routes through borough</div></div>
+    <div class="sr-stat"><div class="v">${totalTrips.toLocaleString()}</div><div class="l">Total trips</div></div>
+    <div class="sr-stat"><div class="v">${avgDelay} min</div><div class="l">Avg delay</div></div>
+    <div class="sr-stat"><div class="v">${czCount}</div><div class="l">Congestion zone routes</div></div>`;
+
+  if(routes.length){
+    const top10=routes.slice(0,10);
+    const rMax=Math.max(...top10.map(r=>Number(r.avg_delay_mins)),1)*1.2;
+    Plotly.newPlot('sr-routes-chart',[{
+      type:'bar',x:top10.map(r=>r.route_name),y:top10.map(r=>r.avg_delay_mins),
+      marker:{color:top10.map(r=>r.congestion_zone==1?'#3d6641':'#9ab89e'),line:{width:0}},
+      hovertemplate:'%{x}<br>%{y} min avg delay<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},range:[0,rMax],rangemode:'tozero'},xaxis:{tickangle:-30,tickfont:{size:9}}}),PC);
+  }
+
+  if(weather&&weather.length){
+    const ws=[...weather].sort((a,b)=>b.avg_delay_mins-a.avg_delay_mins);
+    const wMax=Math.max(...ws.map(r=>Number(r.avg_delay_mins)),1)*1.2;
+    Plotly.newPlot('sr-weather-chart',[{
+      type:'bar',
+      x:ws.map(r=>r.condition_label),
+      y:ws.map(r=>r.avg_delay_mins),
+      marker:{color:SAGE_PALETTE.slice(0,ws.length),line:{width:0}},
+      hovertemplate:'%{x}: %{y} min<extra></extra>'
+    }],L({yaxis:{title:{text:'Avg delay (min)',font:{size:10}},range:[0,wMax],rangemode:'tozero'},margin:{t:12,r:12,b:60,l:50}}),PC);
+  }
+
+  if(peak&&peak.length){
+    const hrs=Array.from({length:16},(_,i)=>i+6);
+    const counts=hrs.map(h=>peak.find(r=>Number(r.hour)===h)?.overcrowded_trips||0);
+    const pk=Math.max(...counts,1);
+    Plotly.newPlot('sr-peak-chart',[{
+      type:'bar',x:hrs.map(h=>`${String(h).padStart(2,'0')}:00`),y:counts,
+      marker:{color:counts.map(v=>v>=pk*0.8?'#3d6641':v>=pk*0.5?'#7a9e7e':'#b8d4bb'),line:{width:0}},
+      hovertemplate:'%{x}: %{y} trips<extra></extra>'
+    }],L({xaxis:{tickangle:-45},yaxis:{title:{text:'Overcrowded trips',font:{size:10}},rangemode:'tozero'}}),PC);
+  }
+
+  renderTable(routes,document.getElementById('sr-table'),10);
+  el.classList.add('visible');
+  setTimeout(()=>window.dispatchEvent(new Event('resize')),60);
+}
+
+// ── SQL PANEL ─────────────────────────────────────────────────
+async function loadSQL(){
+  const [q1,q2,q3,q4]=await Promise.all([
+    apiFetch('/api/routes/delays'),
+    apiFetch('/api/passengers/overrun-by-bracket'),
+    apiFetch('/api/weather/delays'),
+    apiFetch('/api/routes/cz-comparison'),
+  ]);
+  renderTable(q1,document.getElementById('sql-q1-result'),10);
+  renderTable(q2,document.getElementById('sql-q2-result'),10);
+  renderTable(q3,document.getElementById('sql-q3-result'),10);
+  renderTable(q4,document.getElementById('sql-q4-result'),10);
+}
+
+// ── BOOT — await ALL panels before building takeaways ─────────
+(async()=>{
+  await checkStatus();
+  await loadHero();
+  // Load all panels in parallel, then build takeaways once everything is cached
+  await Promise.all([
+    loadOverview(),
+    loadRoutes(),
+    loadPassengers(),
+    loadWeather(),
+    loadVehicles(),
+  ]);
+  buildTakeaways();
+  loadSQL();
+})();
+</script>
+</body>
+</html>
