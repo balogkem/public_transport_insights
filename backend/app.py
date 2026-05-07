@@ -3,6 +3,8 @@ from flask_cors import CORS
 from decimal import Decimal
 import json as _json
 import os
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
 from db import get_connection
 
 app = Flask(
