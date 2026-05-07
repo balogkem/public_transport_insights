@@ -2,4 +2,10 @@
 name = "public-transport-insights"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "flask",
+    "flask-cors",
+    "psycopg2-binary",
+    "python-dotenv",
+    "gunicorn"
+]
